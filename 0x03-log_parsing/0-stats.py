@@ -18,8 +18,10 @@ def output(log: dict) -> None:
 
 
 if __name__ == "__main__":
+    # Adjust the regex to ensure the status code is exactly 3 digits
     regex = re.compile(
-    r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} - \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d+\] "GET /projects/260 HTTP/1.1" (.{3}) (\d+)')  # nopep8
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} - \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d+\] "GET /projects/260 HTTP/1.1" (\d{3}) (\d+)'  # ensures the status code is 3 digits
+    )
 
     line_count = 0
     log = {}
@@ -32,19 +34,19 @@ if __name__ == "__main__":
         for line in sys.stdin:
             line = line.strip()
             match = regex.fullmatch(line)
-            if (match):
+            if match:
                 line_count += 1
-                code = match.group(1)
-                file_size = int(match.group(2))
+                code = match.group(1)  # status code is captured as group 1
+                file_size = int(match.group(2))  # file size is captured as group 2
 
                 # File size
                 log["file_size"] += file_size
 
                 # status code
-                if (code.isdecimal()):
+                if code in log["code_frequency"]:
                     log["code_frequency"][code] += 1
 
-                if (line_count % 10 == 0):
+                if line_count % 10 == 0:
                     output(log)
     finally:
         output(log)
