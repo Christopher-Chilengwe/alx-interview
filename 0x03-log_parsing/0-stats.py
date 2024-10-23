@@ -1,63 +1,57 @@
 #!/usr/bin/python3
 """
-Log Parsing Script
+Read stdin line by line and computes metrics
+Input format: <IP Address> - [<date>] "GET /projects/260 HTTP/1.1"
+<status code> <file size>, skip line if not this format
+After every 10minutes or keyboard interrupt (CTRL + C)
+print these from beginning: number of lines by status code
+possible status codes: 200, 301, 400, 401, 404, 405, and 500
+if status code isn't an integer, do not print it
+format: <status code>: <number>
+Status code must be printed in ascending order
 """
 import sys
-import re
-import signal
 
-# Initialize counters and data storage
-log = {
-    "file_size": 0,
-    "code_frequency": {str(code): 0 for code in [200, 301, 400, 401, 403, 404, 405, 500]}
+
+def print_msg(codes, file_size):
+    print("File size: {}".format(file_size))
+    for key, val in sorted(codes.items()):
+        if val != 0:
+            print("{}: {}".format(key, val))
+
+
+file_size = 0
+code = 0
+count_lines = 0
+codes = {
+    "200": 0,
+    "301": 0,
+    "400": 0,
+    "401": 0,
+    "403": 0,
+    "404": 0,
+    "405": 0,
+    "500": 0
 }
-line_count = 0
 
-# Regular expression to match the required log format
-log_regex = re.compile(
-    r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} - \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d+\] "GET /projects/260 HTTP/1.1" (\d{3}) (\d+)'  # regex to capture status code and file size
-)
-
-# Output statistics
-def output(log):
-    """
-    Helper function to display statistics
-    """
-    print("File size: {}".format(log["file_size"]))
-    for code in sorted(log["code_frequency"]):
-        if log["code_frequency"][code] > 0:
-            print("{}: {}".format(code, log["code_frequency"][code]))
-
-# Signal handler for handling Ctrl+C (SIGINT)
-def signal_handler(sig, frame):
-    """
-    Handle Ctrl+C signal
-    """
-    output(log)
-    sys.exit(0)
-
-# Register the signal handler for Ctrl+C
-signal.signal(signal.SIGINT, signal_handler)
-
-# Main logic: read stdin and process lines
 try:
     for line in sys.stdin:
-        match = log_regex.match(line.strip())
-        if match:
-            line_count += 1
-            code = match.group(1)
-            file_size = int(match.group(2))
+        parsed_line = line.split()
+        parsed_line = parsed_line[::-1]
 
-            # Update file size
-            log["file_size"] += file_size
+        if len(parsed_line) > 2:
+            count_lines += 1
 
-            # Update status code count
-            if code in log["code_frequency"]:
-                log["code_frequency"][code] += 1
+            if count_lines <= 10:
+                file_size += int(parsed_line[0])
+                code = parsed_line[1]
 
-            # Print statistics every 10 lines
-            if line_count % 10 == 0:
-                output(log)
+                if (code in codes.keys()):
+                    codes[code] += 1
+
+            if (count_lines == 10):
+                print_msg(codes, file_size)
+                count_lines = 0
+
 finally:
-    # Ensure output is printed when exiting
-    output(log)
+    print_msg(codes, file_size)
